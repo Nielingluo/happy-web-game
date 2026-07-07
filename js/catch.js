@@ -37,7 +37,6 @@
 
   let W = 400
   let H = 500
-  let GROUND = 0
 
   const images = {}
   let pointerX = 400
@@ -139,7 +138,6 @@
     const phToothy = spriteHeight(images.toothy_monster, player.w)
     player.drawH = Math.max(phMouth, phToothy)
     player.h = player.drawH
-    GROUND = H - bottomPad()
     player.y = playerBottomY(false, false) - player.drawH
   }
 
@@ -447,9 +445,6 @@
       ctx.fill()
     }
     ctx.globalAlpha = 1
-
-    ctx.fillStyle = 'rgba(61, 46, 34, 0.1)'
-    ctx.fillRect(0, GROUND, W, H - GROUND)
 
     ctx.font = `bold ${clamp(W * 0.028, 14, 18)}px Segoe UI, PingFang SC, sans-serif`
     ctx.textAlign = 'center'

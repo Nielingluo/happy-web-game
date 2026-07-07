@@ -55,7 +55,7 @@
   let paused = false
   let sizeScale = 1
 
-  const BOTTOM_PAD_DESKTOP = 0
+  const BOTTOM_PAD_DESKTOP = 4
   const BOTTOM_PAD_MOBILE = 10
 
   const player = { x: 200, y: 0, w: 140, h: 78, wobble: 0, drawH: 78 }
@@ -128,7 +128,7 @@
   }
 
   function playerBottomY(crying, munching) {
-    const rotPad = crying ? 12 : munching ? 6 : isMobileView() ? 2 : 0
+    const rotPad = crying ? 12 : munching ? 6 : 2
     const cryDrop = crying ? 3 : 0
     return H - bottomPad() - rotPad - cryDrop
   }
@@ -144,10 +144,10 @@
   function resizeCanvas() {
     fitShellToViewport()
     const wrap = canvas.parentElement
-    const rect = wrap.getBoundingClientRect()
     const dpr = window.devicePixelRatio || 1
-    W = Math.max(280, Math.floor(rect.width))
-    H = Math.max(240, Math.floor(rect.height))
+    // clientWidth/Height = inner area excluding border (border-box clips overflow)
+    W = Math.max(280, wrap.clientWidth)
+    H = Math.max(240, wrap.clientHeight)
 
     if (window.visualViewport && isMobileView()) {
       const header = document.querySelector('.game-top')

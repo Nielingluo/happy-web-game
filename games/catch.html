@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>大嘴接怪 · 手绘小怪物乐园</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/game.css" />
+</head>
+
+<body class="game-page">
+  <div class="game-shell">
+    <header class="game-top">
+      <div class="top-bar">
+        <a class="back-link" href="../index.html">← 返回菜单</a>
+        <div class="top-actions">
+          <button id="help-btn" class="icon-btn" type="button" title="游戏说明">?</button>
+          <button id="mute-btn" class="icon-btn" type="button" title="静音">🔊</button>
+        </div>
+      </div>
+      <h1>大嘴接怪</h1>
+      <p class="hint">左右滑动大嘴巴，接住掉下来的好吃的！</p>
+      <div class="hud">
+        <span>得分 <strong id="score">0</strong></span>
+        <span>生命 <strong id="lives">3</strong></span>
+        <span>连击 <strong id="combo">0</strong></span>
+      </div>
+    </header>
+
+    <div class="canvas-wrap">
+      <canvas id="game" aria-label="大嘴接怪游戏画布"></canvas>
+    </div>
+
+    <div id="overlay" class="overlay">
+      <div class="panel panel-wide">
+        <h2 id="overlay-title">大嘴接怪</h2>
+        <div id="overlay-rules" class="rules">
+          <p><strong>怎么玩</strong></p>
+          <ul>
+            <li>用手指或鼠标<strong>左右滑动</strong>，移动底部的大嘴巴</li>
+            <li>接住从上方掉下来的<strong>手绘小怪物</strong>得分</li>
+            <li>接到 <strong>眼睛虫</strong> 有特别音效，分数更高</li>
+            <li>漏接会扣生命，大嘴巴会哭给你看</li>
+            <li>一共 3 条命，看看你能得多少分！</li>
+          </ul>
+        </div>
+        <p id="overlay-msg" class="overlay-sub">准备好了吗？</p>
+        <button id="start-btn" type="button">开始游戏</button>
+      </div>
+    </div>
+
+    <div id="help-modal" class="overlay hidden">
+      <div class="panel panel-wide">
+        <h2>游戏说明</h2>
+        <div class="rules">
+          <p><strong>操作</strong></p>
+          <ul>
+            <li>电脑：在画布上移动鼠标</li>
+            <li>手机：手指在屏幕上左右滑动</li>
+          </ul>
+          <p><strong>得分</strong></p>
+          <ul>
+            <li>眼睛虫 +20（特别音效）</li>
+            <li>小鱼、兔子、狗狗、刺刺球等 +12～18</li>
+            <li>连续接住有连击加分</li>
+          </ul>
+          <p><strong>小提示</strong></p>
+          <ul>
+            <li>大嘴巴会自动一张一合</li>
+            <li>漏接时它会变成哭脸并摇晃</li>
+            <li>游戏中点 <strong>?</strong> 会暂停并查看说明</li>
+            <li>右上角可开关声音</li>
+          </ul>
+        </div>
+        <button id="help-close-btn" type="button">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/audio.js"></script>
+  <script src="../js/catch.js"></script>
+</body>
+
+</html>

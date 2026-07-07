@@ -3,11 +3,9 @@
 
   const ASSETS = '../assets/sprites'
   const GAME_TIME = 60
-  const MAX_PROJECTILES = 3
-  const SHOOT_SPEED = 950
-  const WALL_BOUNCE = 0.82
-  const FRICTION = 0.988
-  const HIT_BOOST = 2.4
+  const MAX_PROJECTILES = 1
+  const SHOOT_SPEED = 880
+  const KNOCK_SPEED = 720
 
   const canvas = document.getElementById('game')
   const ctx = canvas.getContext('2d')
@@ -26,13 +24,13 @@
   const shell = document.querySelector('.game-shell')
 
   const MONSTER_DEFS = {
-    dog_face: { file: 'dog_face.png', r: 26, mass: 0.65 },
-    rabbit_head: { file: 'rabbit_head.png', r: 24, mass: 0.6 },
-    happy_fish: { file: 'happy_fish.png', r: 22, mass: 0.55 },
-    giant_eye: { file: 'giant_eye.png', r: 24, mass: 0.62 },
-    eye_bug: { file: 'eye_bug.png', r: 25, mass: 0.65 },
-    toothy_monster: { file: 'toothy_monster.png', r: 23, mass: 0.58 },
-    spiral_snail: { file: 'spiral_snail.png', r: 20, mass: 0.7 },
+    dog_face: { file: 'dog_face.png', r: 26 },
+    rabbit_head: { file: 'rabbit_head.png', r: 24 },
+    happy_fish: { file: 'happy_fish.png', r: 22 },
+    giant_eye: { file: 'giant_eye.png', r: 24 },
+    eye_bug: { file: 'eye_bug.png', r: 25 },
+    toothy_monster: { file: 'toothy_monster.png', r: 23 },
+    spiral_snail: { file: 'spiral_snail.png', r: 20 },
   }
 
   const MONSTER_TYPES = Object.keys(MONSTER_DEFS)
@@ -138,22 +136,22 @@
       let y = 0
       let tries = 0
       do {
-        x = rand(r + 20, W - r - 20)
-        y = rand(r + 30, H * 0.72)
+        x = rand(r + 24, W - r - 24)
+        y = rand(r + 36, H * 0.68)
         tries++
-      } while (tries < 40 && bodies.some((b) => !b.projectile && Math.hypot(b.x - x, b.y - y) < b.r + r + 8))
+      } while (tries < 40 && bodies.some((b) => !b.projectile && Math.hypot(b.x - x, b.y - y) < b.r + r + 10))
 
       bodies.push({
         type,
         projectile: false,
+        knocked: false,
         x,
         y,
-        vx: rand(-70, 70),
-        vy: rand(-55, 55),
+        vx: 0,
+        vy: 0,
         r,
-        mass: def.mass,
         rot: rand(0, Math.PI * 2),
-        spin: rand(-1.5, 1.5),
+        spin: rand(-0.4, 0.4),
       })
     }
   }
@@ -167,7 +165,7 @@
     const dx = targetX - launcher.x
     const dy = targetY - launcher.y
     const len = Math.hypot(dx, dy) || 1
-    const r = scaledR(22)
+    const r = scaledR(20)
     bodies.push({
       type: 'spiky_puff',
       projectile: true,
@@ -176,51 +174,27 @@
       vx: (dx / len) * SHOOT_SPEED,
       vy: (dy / len) * SHOOT_SPEED,
       r,
-      mass: 4,
       rot: 0,
-      spin: rand(-8, 8),
-      life: 5,
+      spin: rand(-6, 6),
+      life: 1.2,
     })
     sfx('pop', true)
   }
 
-  function resolveCollision(a, b) {
-    const dx = b.x - a.x
-    const dy = b.y - a.y
-    const dist = Math.hypot(dx, dy)
-    const minDist = a.r + b.r
-    if (dist >= minDist || dist === 0) return false
+  function circlesHit(a, b) {
+    const dist = Math.hypot(b.x - a.x, b.y - a.y)
+    return dist < a.r + b.r
+  }
 
-    const nx = dx / dist
-    const ny = dy / dist
-    const overlap = minDist - dist
-    const total = a.mass + b.mass
-    a.x -= (nx * overlap * b.mass) / total
-    a.y -= (ny * overlap * b.mass) / total
-    b.x += (nx * overlap * a.mass) / total
-    b.y += (ny * overlap * a.mass) / total
-
-    const dvx = a.vx - b.vx
-    const dvy = a.vy - b.vy
-    const impact = dvx * nx + dvy * ny
-    if (impact <= 0) return false
-
-    const impulse = (2 * impact) / total
-    a.vx -= impulse * b.mass * nx
-    a.vy -= impulse * b.mass * ny
-    b.vx += impulse * a.mass * nx
-    b.vy += impulse * a.mass * ny
-
-    const proj = a.projectile ? a : b.projectile ? b : null
-    if (proj) {
-      const other = a.projectile ? b : a
-      const speed = Math.hypot(proj.vx, proj.vy)
-      other.vx += nx * speed * HIT_BOOST * 0.35
-      other.vy += ny * speed * HIT_BOOST * 0.35
-      proj.vx *= 0.98
-      proj.vy *= 0.98
-    }
-    return true
+  function knockMonster(proj, monster) {
+    const len = Math.hypot(proj.vx, proj.vy) || 1
+    monster.vx = (proj.vx / len) * KNOCK_SPEED
+    monster.vy = (proj.vy / len) * KNOCK_SPEED
+    monster.knocked = true
+    monster.spin = rand(-6, 6)
+    shakeTimer = 0.14
+    burst(monster.x, monster.y)
+    sfx('bounce', true)
   }
 
   function addPopup(text, x, y, color = '#8b3a1a') {
@@ -230,7 +204,7 @@
   function burst(x, y) {
     for (let i = 0; i < 7; i++) {
       const a = rand(0, Math.PI * 2)
-      const sp = rand(80, 200)
+      const sp = rand(90, 220)
       particles.push({
         x,
         y,
@@ -249,10 +223,42 @@
     knocked += 1
     combo += 1
     comboTimer = 2.5
-    shakeTimer = 0.18
-    burst(b.x, b.y)
     addPopup(`+${gained}`, b.x, b.y, '#2a7a3b')
-    sfx('bounce')
+  }
+
+  function trySpawnMonster() {
+    if (bodies.filter((b) => !b.projectile).length >= 6) return
+    const type = MONSTER_TYPES[Math.floor(Math.random() * MONSTER_TYPES.length)]
+    const def = MONSTER_DEFS[type]
+    const r = scaledR(def.r)
+    const side = Math.floor(Math.random() * 4)
+    let x = 0
+    let y = 0
+    if (side === 0) {
+      x = rand(r + 20, W - r - 20)
+      y = H + r + 8
+    } else if (side === 1) {
+      x = -r - 8
+      y = rand(r + 20, H - r - 20)
+    } else if (side === 2) {
+      x = W + r + 8
+      y = rand(r + 20, H - r - 20)
+    } else {
+      x = rand(r + 20, W - r - 20)
+      y = -r - 8
+    }
+    bodies.push({
+      type,
+      projectile: false,
+      knocked: false,
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      r,
+      rot: rand(0, Math.PI * 2),
+      spin: rand(-0.4, 0.4),
+    })
   }
 
   function update(dt) {
@@ -265,10 +271,17 @@
       return
     }
 
-    for (let i = 0; i < bodies.length; i++) {
-      for (let j = i + 1; j < bodies.length; j++) {
-        if (resolveCollision(bodies[i], bodies[j])) {
-          sfx('bounce')
+    for (let i = bodies.length - 1; i >= 0; i--) {
+      const proj = bodies[i]
+      if (!proj.projectile) continue
+      for (let j = bodies.length - 1; j >= 0; j--) {
+        if (i === j) continue
+        const monster = bodies[j]
+        if (monster.projectile || monster.knocked) continue
+        if (circlesHit(proj, monster)) {
+          knockMonster(proj, monster)
+          bodies.splice(i, 1)
+          break
         }
       }
     }
@@ -277,75 +290,51 @@
       const b = bodies[i]
       b.x += b.vx * dt
       b.y += b.vy * dt
-      if (!b.projectile) {
-        b.vx *= FRICTION
-        b.vy *= FRICTION
-      }
       b.rot += b.spin * dt
-
-      if (b.x - b.r < 0) {
-        b.x = b.r
-        b.vx = Math.abs(b.vx) * (b.projectile ? 0.9 : WALL_BOUNCE)
-      } else if (b.x + b.r > W) {
-        b.x = W - b.r
-        b.vx = -Math.abs(b.vx) * (b.projectile ? 0.9 : WALL_BOUNCE)
-      }
-      if (b.y - b.r < 0) {
-        b.y = b.r
-        b.vy = Math.abs(b.vy) * (b.projectile ? 0.9 : WALL_BOUNCE)
-      } else if (b.y + b.r > H) {
-        b.y = H - b.r
-        b.vy = -Math.abs(b.vy) * (b.projectile ? 0.9 : WALL_BOUNCE)
-      }
 
       if (b.projectile) {
         b.life -= dt
-        if (b.life <= 0) bodies.splice(i, 1)
+        if (
+          b.life <= 0 ||
+          b.x < -b.r - 10 ||
+          b.x > W + b.r + 10 ||
+          b.y < -b.r - 10 ||
+          b.y > H + b.r + 10
+        ) {
+          bodies.splice(i, 1)
+        }
         continue
       }
 
-      const margin = 28
+      if (!b.knocked) {
+        b.vx *= 0.9
+        b.vy *= 0.9
+        if (b.x - b.r < 0) {
+          b.x = b.r
+          b.vx = Math.abs(b.vx) * 0.2
+        } else if (b.x + b.r > W) {
+          b.x = W - b.r
+          b.vx = -Math.abs(b.vx) * 0.2
+        }
+        if (b.y - b.r < 0) {
+          b.y = b.r
+          b.vy = Math.abs(b.vy) * 0.2
+        } else if (b.y + b.r > H) {
+          b.y = H - b.r
+          b.vy = -Math.abs(b.vy) * 0.2
+        }
+        continue
+      }
+
+      const margin = 20
       if (b.x < -margin || b.x > W + margin || b.y < -margin || b.y > H + margin) {
         onKnocked(b)
         bodies.splice(i, 1)
       }
     }
 
-    if (bodies.filter((b) => !b.projectile).length < 4 && Math.random() < dt * 0.35) {
-      const type = MONSTER_TYPES[Math.floor(Math.random() * MONSTER_TYPES.length)]
-      const def = MONSTER_DEFS[type]
-      const r = scaledR(def.r)
-      const side = Math.floor(Math.random() * 4)
-      let x = 0
-      let y = 0
-      if (side === 0) {
-        x = -r
-        y = rand(r, H - r)
-      } else if (side === 1) {
-        x = W + r
-        y = rand(r, H - r)
-      } else if (side === 2) {
-        x = rand(r, W - r)
-        y = -r
-      } else {
-        x = rand(r, W - r)
-        y = H + r
-      }
-      const cx = W / 2
-      const cy = H / 2
-      const len = Math.hypot(cx - x, cy - y) || 1
-      bodies.push({
-        type,
-        projectile: false,
-        x,
-        y,
-        vx: ((cx - x) / len) * rand(60, 120),
-        vy: ((cy - y) / len) * rand(60, 120),
-        r,
-        mass: def.mass,
-        rot: rand(0, Math.PI * 2),
-        spin: rand(-1, 1),
-      })
+    if (bodies.filter((b) => !b.projectile && !b.knocked).length < 4 && Math.random() < dt * 0.45) {
+      trySpawnMonster()
     }
 
     for (let i = popups.length - 1; i >= 0; i--) {
@@ -400,8 +389,8 @@
     ctx.translate(b.x, b.y)
     ctx.rotate(b.rot)
     if (b.projectile) {
-      ctx.shadowColor = 'rgba(61, 46, 34, 0.25)'
-      ctx.shadowBlur = 6
+      ctx.shadowColor = 'rgba(61, 46, 34, 0.3)'
+      ctx.shadowBlur = 8
     }
     ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
     ctx.restore()
@@ -417,13 +406,6 @@
     ctx.translate(launcher.x, launcher.y + bob)
     ctx.drawImage(img, -r, -r, r * 2, r * 2)
     ctx.restore()
-    ctx.strokeStyle = 'rgba(61, 46, 34, 0.2)'
-    ctx.lineWidth = 2
-    ctx.setLineDash([4, 6])
-    ctx.beginPath()
-    ctx.arc(launcher.x, launcher.y, r + 6, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.setLineDash([])
   }
 
   function draw() {
@@ -520,7 +502,7 @@
     resizeCanvas()
     if (running) {
       for (const b of bodies) {
-        if (!b.projectile) {
+        if (!b.projectile && !b.knocked) {
           b.x = clamp(b.x, b.r, W - b.r)
           b.y = clamp(b.y, b.r, H - b.r)
         }

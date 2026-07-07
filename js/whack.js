@@ -133,8 +133,10 @@
     }
   }
 
-  function sfx(key) {
-    if (window.GameAudio) GameAudio.play(key)
+  function sfx(key, fromGesture = false) {
+    if (!window.GameAudio) return
+    if (fromGesture) GameAudio.playFromGesture(key)
+    else GameAudio.play(key)
   }
 
   function elapsed() {
@@ -218,7 +220,9 @@
     occ.timer = 0
     score += def.points
     hits += 1
-    sfx(def.sfx)
+    if (def.trap) sfx('ouch', true)
+    else if (def.sfx === 'bark' || def.sfx === 'hop') sfx('catch', true)
+    else sfx(def.sfx, true)
     burst(hole.cx, hole.cy - hole.h * 0.12, def.points > 0)
     const sign = def.points >= 0 ? '+' : ''
     addPopup(`${sign}${def.points}`, hole.cx, hole.cy - hole.h * 0.35, def.points < 0 ? '#c0392b' : def.trap ? '#c0392b' : '#2a7a3b')
@@ -236,18 +240,19 @@
 
   function tryHit(clientX, clientY) {
     if (!running || paused) return
+    if (window.GameAudio) GameAudio.unlock()
     const p = pointerToGame(clientX, clientY)
     for (const hole of holes) {
       const occ = hole.occupant
       if (!occ || occ.state === 'hit' || occ.scale < 0.4) continue
       const dx = p.x - hole.cx
       const dy = p.y - (hole.cy - hole.h * 0.1)
-      const hitR = hole.w * 0.38
+      const hitR = hole.w * 0.44
       if (dx * dx + dy * dy <= hitR * hitR) {
         if (hitMole(hole)) return
       }
     }
-    sfx('tap')
+    sfx('tap', true)
   }
 
   function update(dt) {
@@ -277,6 +282,8 @@
         if (occ.scale >= 1) {
           occ.state = 'up'
           occ.timer = 0
+          const def = CHAR_DEFS[occ.type]
+          if (def.sfx === 'bark' || def.sfx === 'hop') sfx(def.sfx, true)
         }
       } else if (occ.state === 'up') {
         if (CHAR_DEFS[occ.type].anim === 'hop') {

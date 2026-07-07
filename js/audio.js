@@ -11,10 +11,10 @@
     miss: { file: "miss_cry.mp3", volume: 0.5 },
     gameover: { file: "gameover.mp3", volume: 0.45 },
     pop: { file: "pop.mp3", volume: 0.35 },
-    bark: { file: "bark.mp3", volume: 0.6 },
-    hop: { file: "hop.mp3", volume: 0.55 },
-    ouch: { file: "ouch.mp3", volume: 0.55 },
-    bounce: { file: "bounce.mp3", volume: 0.5 },
+    bark: { file: "bark.mp3", volume: 0.85 },
+    hop: { file: "hop.mp3", volume: 0.8 },
+    ouch: { file: "ouch.mp3", volume: 0.75 },
+    bounce: { file: "bounce.mp3", volume: 0.65 },
     tap: { file: "tap.mp3", volume: 0.3 },
   };
 
@@ -46,7 +46,7 @@
   }
 
   function play(key) {
-    if (muted || !unlocked) return null;
+    if (muted || !TRACKS[key]) return null;
     const src = ensure(key);
     if (src.loop) {
       src.currentTime = 0;
@@ -57,6 +57,12 @@
     node.volume = src.volume;
     node.play().catch(() => {});
     return node;
+  }
+
+  function playFromGesture(key) {
+    if (muted || !TRACKS[key]) return null;
+    unlocked = true;
+    return play(key);
   }
 
   function startBgm() {
@@ -87,5 +93,5 @@
 
   preloadAll();
 
-  window.GameAudio = { unlock, play, startBgm, stopBgm, setMuted, isMuted };
+  window.GameAudio = { unlock, play, playFromGesture, startBgm, stopBgm, setMuted, isMuted };
 })();

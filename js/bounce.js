@@ -3,10 +3,11 @@
 
   const ASSETS = '../assets/sprites'
   const GAME_TIME = 60
-  const MAX_PROJECTILES = 2
-  const SHOOT_SPEED = 420
-  const WALL_BOUNCE = 0.78
-  const FRICTION = 0.992
+  const MAX_PROJECTILES = 3
+  const SHOOT_SPEED = 950
+  const WALL_BOUNCE = 0.82
+  const FRICTION = 0.988
+  const HIT_BOOST = 2.4
 
   const canvas = document.getElementById('game')
   const ctx = canvas.getContext('2d')
@@ -25,13 +26,13 @@
   const shell = document.querySelector('.game-shell')
 
   const MONSTER_DEFS = {
-    dog_face: { file: 'dog_face.png', r: 26, mass: 1 },
-    rabbit_head: { file: 'rabbit_head.png', r: 24, mass: 0.9 },
-    happy_fish: { file: 'happy_fish.png', r: 22, mass: 0.85 },
-    giant_eye: { file: 'giant_eye.png', r: 24, mass: 1 },
-    eye_bug: { file: 'eye_bug.png', r: 25, mass: 1.05 },
-    toothy_monster: { file: 'toothy_monster.png', r: 23, mass: 0.95 },
-    spiral_snail: { file: 'spiral_snail.png', r: 20, mass: 1.2 },
+    dog_face: { file: 'dog_face.png', r: 26, mass: 0.65 },
+    rabbit_head: { file: 'rabbit_head.png', r: 24, mass: 0.6 },
+    happy_fish: { file: 'happy_fish.png', r: 22, mass: 0.55 },
+    giant_eye: { file: 'giant_eye.png', r: 24, mass: 0.62 },
+    eye_bug: { file: 'eye_bug.png', r: 25, mass: 0.65 },
+    toothy_monster: { file: 'toothy_monster.png', r: 23, mass: 0.58 },
+    spiral_snail: { file: 'spiral_snail.png', r: 20, mass: 0.7 },
   }
 
   const MONSTER_TYPES = Object.keys(MONSTER_DEFS)
@@ -116,8 +117,10 @@
     launcher.y = H - (isMobileView() ? 14 : 8)
   }
 
-  function sfx(key) {
-    if (window.GameAudio) GameAudio.play(key)
+  function sfx(key, fromGesture = false) {
+    if (!window.GameAudio) return
+    if (fromGesture) GameAudio.playFromGesture(key)
+    else GameAudio.play(key)
   }
 
   function scaledR(base) {
@@ -145,8 +148,8 @@
         projectile: false,
         x,
         y,
-        vx: rand(-40, 40),
-        vy: rand(-30, 30),
+        vx: rand(-70, 70),
+        vy: rand(-55, 55),
         r,
         mass: def.mass,
         rot: rand(0, Math.PI * 2),
@@ -173,12 +176,12 @@
       vx: (dx / len) * SHOOT_SPEED,
       vy: (dy / len) * SHOOT_SPEED,
       r,
-      mass: 2.2,
+      mass: 4,
       rot: 0,
-      spin: 0,
-      life: 4,
+      spin: rand(-8, 8),
+      life: 5,
     })
-    sfx('pop')
+    sfx('pop', true)
   }
 
   function resolveCollision(a, b) {
@@ -207,6 +210,16 @@
     a.vy -= impulse * b.mass * ny
     b.vx += impulse * a.mass * nx
     b.vy += impulse * a.mass * ny
+
+    const proj = a.projectile ? a : b.projectile ? b : null
+    if (proj) {
+      const other = a.projectile ? b : a
+      const speed = Math.hypot(proj.vx, proj.vy)
+      other.vx += nx * speed * HIT_BOOST * 0.35
+      other.vy += ny * speed * HIT_BOOST * 0.35
+      proj.vx *= 0.98
+      proj.vy *= 0.98
+    }
     return true
   }
 
@@ -264,23 +277,25 @@
       const b = bodies[i]
       b.x += b.vx * dt
       b.y += b.vy * dt
-      b.vx *= FRICTION
-      b.vy *= FRICTION
+      if (!b.projectile) {
+        b.vx *= FRICTION
+        b.vy *= FRICTION
+      }
       b.rot += b.spin * dt
 
       if (b.x - b.r < 0) {
         b.x = b.r
-        b.vx = Math.abs(b.vx) * WALL_BOUNCE
+        b.vx = Math.abs(b.vx) * (b.projectile ? 0.9 : WALL_BOUNCE)
       } else if (b.x + b.r > W) {
         b.x = W - b.r
-        b.vx = -Math.abs(b.vx) * WALL_BOUNCE
+        b.vx = -Math.abs(b.vx) * (b.projectile ? 0.9 : WALL_BOUNCE)
       }
       if (b.y - b.r < 0) {
         b.y = b.r
-        b.vy = Math.abs(b.vy) * WALL_BOUNCE
+        b.vy = Math.abs(b.vy) * (b.projectile ? 0.9 : WALL_BOUNCE)
       } else if (b.y + b.r > H) {
         b.y = H - b.r
-        b.vy = -Math.abs(b.vy) * WALL_BOUNCE
+        b.vy = -Math.abs(b.vy) * (b.projectile ? 0.9 : WALL_BOUNCE)
       }
 
       if (b.projectile) {
@@ -526,6 +541,7 @@
 
   canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault()
+    if (window.GameAudio) GameAudio.unlock()
     const rect = canvas.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * W
     const y = ((e.clientY - rect.top) / rect.height) * H

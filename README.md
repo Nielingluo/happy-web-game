@@ -88,7 +88,6 @@ DNS 通常 5 分钟～48 小时生效。GitHub Pages 设置里勾选 **Enforce H
 index.html          # 游戏菜单
 games/catch.html    # 大嘴接怪
 games/whack.html    # 森林躲猫猫
-games/bounce.html   # 刺刺球弹弹乐
 js/                 # 游戏逻辑与音效
 css/                # 样式
 assets/sprites/     # 手绘素材

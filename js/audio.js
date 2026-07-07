@@ -14,7 +14,6 @@
     bark: { file: "bark.mp3", volume: 0.85 },
     hop: { file: "hop.mp3", volume: 0.8 },
     ouch: { file: "ouch.mp3", volume: 0.75 },
-    bounce: { file: "bounce.mp3", volume: 0.65 },
     tap: { file: "tap.mp3", volume: 0.3 },
   };
 

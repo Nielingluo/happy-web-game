@@ -13,7 +13,6 @@
 | `bark.mp3` | 点到小狗（森林躲猫猫） | [Mixkit](https://mixkit.co/free-sound-effects/dog/) — Dog barking twice (#1) |
 | `hop.mp3` | 点到兔子蹦跳 | [Mixkit](https://mixkit.co/free-sound-effects/jump/) — Player jumping in a video game (#2043) |
 | `ouch.mp3` | 点到刺刺球扣分 | [Mixkit](https://mixkit.co/free-sound-effects/hurt/) (#5) |
-| `bounce.mp3` | 弹球碰撞 / 弹飞得分 | [Mixkit](https://mixkit.co/free-sound-effects/ball/) — Ball bouncing in the ground |
 | `tap.mp3` | 点空 / 点到眼睛 | [Mixkit](https://mixkit.co/free-sound-effects/click/) |
 
 Mixkit 许可：可免费用于个人与商业项目，详见 [Mixkit License](https://mixkit.co/license/)。

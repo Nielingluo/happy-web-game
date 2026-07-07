@@ -56,10 +56,11 @@
   let paused = false
   let sizeScale = 1
 
-  const BOTTOM_PAD = 12
-  const MOUTH_OPEN_MAX = 1.18
+  const BOTTOM_PAD_DESKTOP = 6
+  const BOTTOM_PAD_MOBILE = 22
 
   const player = { x: 200, y: 0, w: 140, h: 78, wobble: 0, drawH: 78 }
+  const shell = document.querySelector('.game-shell')
 
   const CONFETTI_COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff8fc7', '#9b59b6', '#ff9f43']
 
@@ -99,24 +100,64 @@
     return img.height * (width / img.width)
   }
 
+  function isMobileView() {
+    return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 720
+  }
+
+  function bottomPad() {
+    return isMobileView() ? BOTTOM_PAD_MOBILE : BOTTOM_PAD_DESKTOP
+  }
+
+  function fitShellToViewport() {
+    if (!shell) return
+    const vv = window.visualViewport
+    if (!vv) return
+    const top = Math.max(0, Math.floor(vv.offsetTop))
+    const height = Math.max(320, Math.floor(vv.height) - 4)
+    shell.style.height = `${height}px`
+    shell.style.marginTop = `${top}px`
+  }
+
+  function playerMetrics(imgKey, mouthOpen) {
+    const img = images[imgKey]
+    if (!img) {
+      const ph = player.h
+      return { ph, scaledH: ph * mouthOpen }
+    }
+    const ph = spriteHeight(img, player.w)
+    return { ph, scaledH: ph * mouthOpen }
+  }
+
+  function playerBottomY(crying, munching) {
+    const rotPad = crying ? 14 : munching ? 8 : 4
+    const cryDrop = crying ? 4 : 0
+    return H - bottomPad() - rotPad - cryDrop
+  }
+
   function layoutPlayer() {
     const phMouth = spriteHeight(images.big_mouth, player.w)
     const phToothy = spriteHeight(images.toothy_monster, player.w)
-    const ph = Math.max(phMouth, phToothy)
-    player.drawH = ph
-    player.h = ph
-    const bobPad = 3
-    const openPad = (ph / 2) * (1 + MOUTH_OPEN_MAX)
-    player.y = H - BOTTOM_PAD - bobPad - openPad
-    GROUND = H - BOTTOM_PAD
+    player.drawH = Math.max(phMouth, phToothy)
+    player.h = player.drawH
+    GROUND = H - bottomPad()
+    player.y = playerBottomY(false, false) - player.drawH
   }
 
   function resizeCanvas() {
+    fitShellToViewport()
     const wrap = canvas.parentElement
     const rect = wrap.getBoundingClientRect()
     const dpr = window.devicePixelRatio || 1
     W = Math.max(280, Math.floor(rect.width))
     H = Math.max(240, Math.floor(rect.height))
+
+    if (window.visualViewport && isMobileView()) {
+      const header = document.querySelector('.game-top')
+      const headerH = header ? header.getBoundingClientRect().height : 0
+      const shellPad = 14
+      const maxH = Math.floor(window.visualViewport.height - headerH - shellPad)
+      H = Math.min(H, Math.max(240, maxH))
+    }
     sizeScale = clamp(W / 360, 0.8, 1.2)
     canvas.width = Math.floor(W * dpr)
     canvas.height = Math.floor(H * dpr)
@@ -211,13 +252,18 @@
   }
 
   function catchBox() {
+    const crying = cryTimer > 0
+    const munching = munchTimer > 0
+    const imgKey = crying ? 'toothy_monster' : 'big_mouth'
+    const mouthOpen = munching ? 1.18 : crying ? 0.82 : 1
+    const { ph } = playerMetrics(imgKey, mouthOpen)
     const padX = player.w * 0.14
-    const ph = player.drawH || player.h
+    const bottomY = playerBottomY(crying, munching)
     return {
       x: player.x - player.w / 2 + padX,
-      y: player.y,
+      y: bottomY - ph,
       w: player.w - padX * 2,
-      h: ph * 0.55,
+      h: ph * 0.58,
     }
   }
 
@@ -353,24 +399,25 @@
     const munching = munchTimer > 0
     const bob = crying ? 0 : Math.sin(player.wobble) * 2
     let px = player.x
-    let py = player.y + bob
-
-    if (crying) {
-      px += Math.sin(cryTimer * 28) * 6
-      py += Math.abs(Math.sin(cryTimer * 22)) * 3
-    }
-
     const mouthOpen = munching ? 1.18 : crying ? 0.82 : 0.92 + Math.sin(mouthPhase) * 0.1
-
     const imgKey = crying ? 'toothy_monster' : 'big_mouth'
     const img = images[imgKey]
     if (!img) return
 
     const scale = player.w / img.width
     const ph = img.height * scale
+    const scaledH = ph * mouthOpen
+    const bottomY = playerBottomY(crying, munching) - bob
+    const centerY = bottomY - scaledH / 2
+
+    if (crying) {
+      px += Math.sin(cryTimer * 28) * 6
+    }
+
+    player.y = bottomY - ph
 
     ctx.save()
-    ctx.translate(px, py + ph / 2)
+    ctx.translate(px, centerY)
     if (crying) ctx.rotate(Math.sin(cryTimer * 18) * 0.12)
     else ctx.rotate((pointerX - px) * 0.0006)
     ctx.scale(1, mouthOpen)
@@ -381,7 +428,7 @@
       ctx.font = `bold ${clamp(player.w * 0.14, 14, 20)}px Segoe UI, PingFang SC, sans-serif`
       ctx.fillStyle = '#5a8fd4'
       ctx.textAlign = 'center'
-      ctx.fillText('呜呜…', px, py - 6)
+      ctx.fillText('呜呜…', px, bottomY - ph - 6)
     }
   }
 
@@ -516,20 +563,32 @@
       startGame()
     }
   })
-  function onViewportChange() {
+  function scheduleLayout() {
+    fitShellToViewport()
     resizeCanvas()
     draw()
+    requestAnimationFrame(() => {
+      fitShellToViewport()
+      resizeCanvas()
+      draw()
+    })
+    window.setTimeout(() => {
+      fitShellToViewport()
+      resizeCanvas()
+      draw()
+    }, 350)
   }
 
-  window.addEventListener('resize', onViewportChange)
+  window.addEventListener('resize', scheduleLayout)
+  window.addEventListener('orientationchange', scheduleLayout)
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', onViewportChange)
-    window.visualViewport.addEventListener('scroll', onViewportChange)
+    window.visualViewport.addEventListener('resize', scheduleLayout)
+    window.visualViewport.addEventListener('scroll', scheduleLayout)
   }
 
   loadAssets()
     .then(() => {
-      resizeCanvas()
+      scheduleLayout()
       showStart()
     })
     .catch((err) => {

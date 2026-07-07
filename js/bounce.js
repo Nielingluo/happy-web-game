@@ -4,8 +4,13 @@
   const ASSETS = '../assets/sprites'
   const GAME_TIME = 60
   const MAX_PROJECTILES = 1
-  const SHOOT_SPEED = 880
-  const KNOCK_SPEED = 720
+  const SHOOT_SPEED = 820
+  const WALL_RESTITUTION = 0.84
+  const BALL_MASS = 2.8
+  const MONSTER_MASS = 1.1
+  const KNOCK_BOOST = 0.55
+  const BALL_FRICTION = 0.997
+  const MONSTER_DRAG = 0.992
 
   const canvas = document.getElementById('game')
   const ctx = canvas.getContext('2d')
@@ -34,7 +39,7 @@
   }
 
   const MONSTER_TYPES = Object.keys(MONSTER_DEFS)
-  const CONFETTI = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff8fc7']
+  const CONFETTI = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff8fc7', '#9b59b6']
 
   let W = 400
   let H = 500
@@ -53,6 +58,7 @@
   let popups = []
   let particles = []
   let shakeTimer = 0
+  let bounceSfxCooldown = 0
 
   function loadImage(key, file) {
     return new Promise((resolve, reject) => {
@@ -121,8 +127,22 @@
     else GameAudio.play(key)
   }
 
+  function playBounceSfx() {
+    if (bounceSfxCooldown > 0) return
+    bounceSfxCooldown = 0.07
+    sfx('bounce')
+  }
+
   function scaledR(base) {
     return base * sizeScale
+  }
+
+  function getBall() {
+    return bodies.find((b) => b.projectile) || null
+  }
+
+  function getMonsters() {
+    return bodies.filter((b) => !b.projectile)
   }
 
   function spawnMonsters() {
@@ -137,31 +157,32 @@
       let tries = 0
       do {
         x = rand(r + 24, W - r - 24)
-        y = rand(r + 36, H * 0.68)
+        y = rand(r + 36, H * 0.65)
         tries++
-      } while (tries < 40 && bodies.some((b) => !b.projectile && Math.hypot(b.x - x, b.y - y) < b.r + r + 10))
+      } while (tries < 40 && bodies.some((b) => Math.hypot(b.x - x, b.y - y) < b.r + r + 10))
 
-      bodies.push({
-        type,
-        projectile: false,
-        knocked: false,
-        x,
-        y,
-        vx: 0,
-        vy: 0,
-        r,
-        rot: rand(0, Math.PI * 2),
-        spin: rand(-0.4, 0.4),
-      })
+      bodies.push(makeMonster(type, x, y, r))
     }
   }
 
-  function projectileCount() {
-    return bodies.filter((b) => b.projectile).length
+  function makeMonster(type, x, y, r) {
+    return {
+      type,
+      projectile: false,
+      knocked: false,
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      r,
+      rot: rand(0, Math.PI * 2),
+      spin: 0,
+      squash: 0,
+    }
   }
 
   function shoot(targetX, targetY) {
-    if (!running || paused || projectileCount() >= MAX_PROJECTILES) return
+    if (!running || paused || getBall()) return
     const dx = targetX - launcher.x
     const dy = targetY - launcher.y
     const len = Math.hypot(dx, dy) || 1
@@ -175,90 +196,177 @@
       vy: (dy / len) * SHOOT_SPEED,
       r,
       rot: 0,
-      spin: rand(-6, 6),
-      life: 1.2,
+      spin: rand(-5, 5),
+      squash: 0,
     })
     sfx('pop', true)
   }
 
-  function circlesHit(a, b) {
+  function circlesOverlap(a, b) {
     const dist = Math.hypot(b.x - a.x, b.y - a.y)
     return dist < a.r + b.r
   }
 
-  function knockMonster(proj, monster) {
-    const len = Math.hypot(proj.vx, proj.vy) || 1
-    monster.vx = (proj.vx / len) * KNOCK_SPEED
-    monster.vy = (proj.vy / len) * KNOCK_SPEED
-    monster.knocked = true
-    monster.spin = rand(-6, 6)
-    shakeTimer = 0.14
-    burst(monster.x, monster.y)
-    sfx('bounce', true)
+  function resolveBallMonster(ball, monster) {
+    const dx = monster.x - ball.x
+    const dy = monster.y - ball.y
+    const dist = Math.hypot(dx, dy)
+    const minDist = ball.r + monster.r
+    if (dist >= minDist || dist === 0) return false
+
+    const nx = dx / dist
+    const ny = dy / dist
+    const overlap = minDist - dist
+    ball.x -= nx * overlap * 0.55
+    ball.y -= ny * overlap * 0.55
+    monster.x += nx * overlap * 0.45
+    monster.y += ny * overlap * 0.45
+
+    const dvx = ball.vx - monster.vx
+    const dvy = ball.vy - monster.vy
+    const impact = dvx * nx + dvy * ny
+    if (impact <= 0) return false
+
+    const total = BALL_MASS + MONSTER_MASS
+    const impulse = (2 * impact) / total
+    ball.vx -= impulse * MONSTER_MASS * nx
+    ball.vy -= impulse * MONSTER_MASS * ny
+    monster.vx += impulse * BALL_MASS * nx
+    monster.vy += impulse * BALL_MASS * ny
+
+    if (!monster.knocked) {
+      const hitSpeed = Math.hypot(ball.vx, ball.vy)
+      monster.vx += nx * hitSpeed * KNOCK_BOOST
+      monster.vy += ny * hitSpeed * KNOCK_BOOST
+      monster.knocked = true
+      monster.spin = rand(-7, 7)
+    }
+
+    ball.squash = Math.max(ball.squash, 0.24)
+    monster.squash = Math.max(monster.squash, 0.16)
+    playBounceSfx()
+    return true
+  }
+
+  function resolveBallWalls(ball) {
+    let hit = false
+    if (ball.x - ball.r < 0) {
+      ball.x = ball.r
+      ball.vx = Math.abs(ball.vx) * WALL_RESTITUTION
+      hit = true
+    } else if (ball.x + ball.r > W) {
+      ball.x = W - ball.r
+      ball.vx = -Math.abs(ball.vx) * WALL_RESTITUTION
+      hit = true
+    }
+    if (ball.y - ball.r < 0) {
+      ball.y = ball.r
+      ball.vy = Math.abs(ball.vy) * WALL_RESTITUTION
+      hit = true
+    }
+    if (hit) {
+      ball.squash = Math.max(ball.squash, 0.2)
+      playBounceSfx()
+    }
+    return ball.y - ball.r > H
+  }
+
+  function clampMonsterToBounds(monster) {
+    if (monster.knocked) return
+    if (monster.x - monster.r < 0) {
+      monster.x = monster.r
+      monster.vx = 0
+    } else if (monster.x + monster.r > W) {
+      monster.x = W - monster.r
+      monster.vx = 0
+    }
+    if (monster.y - monster.r < 0) {
+      monster.y = monster.r
+      monster.vy = 0
+    } else if (monster.y + monster.r > H) {
+      monster.y = H - monster.r
+      monster.vy = 0
+    }
+  }
+
+  function resolveKnockedMonsterWalls(monster) {
+    const rest = 0.72
+    if (monster.x - monster.r < 0) {
+      monster.x = monster.r
+      monster.vx = Math.abs(monster.vx) * rest
+    } else if (monster.x + monster.r > W) {
+      monster.x = W - monster.r
+      monster.vx = -Math.abs(monster.vx) * rest
+    }
+    if (monster.y - monster.r < 0) {
+      monster.y = monster.r
+      monster.vy = Math.abs(monster.vy) * rest
+    } else if (monster.y + monster.r > H) {
+      monster.y = H - monster.r
+      monster.vy = -Math.abs(monster.vy) * rest
+    }
   }
 
   function addPopup(text, x, y, color = '#8b3a1a') {
     popups.push({ text, x, y, life: 1, color })
   }
 
-  function burst(x, y) {
-    for (let i = 0; i < 7; i++) {
+  function borderBurst(x, y) {
+    for (let i = 0; i < 12; i++) {
       const a = rand(0, Math.PI * 2)
-      const sp = rand(90, 220)
+      const sp = rand(100, 240)
       particles.push({
         x,
         y,
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp,
-        life: 1,
-        r: rand(2, 5),
+        life: 0.9,
+        r: rand(2, 6),
         color: CONFETTI[i % CONFETTI.length],
       })
     }
   }
 
-  function onKnocked(b) {
+  function scoreMonsterExit(monster) {
+    const margin = 18
+    const outLeft = monster.x < -margin
+    const outRight = monster.x > W + margin
+    const outTop = monster.y < -margin
+    const outBottom = monster.y > H + margin
+    if (!outLeft && !outRight && !outTop && !outBottom) return false
+
+    let bx = clamp(monster.x, 8, W - 8)
+    let by = clamp(monster.y, 8, H - 8)
+    if (outLeft) bx = 6
+    if (outRight) bx = W - 6
+    if (outTop) by = 6
+    if (outBottom) by = H - 6
+
     const gained = Math.round(15 * (1 + combo * 0.08))
     score += gained
     knocked += 1
     combo += 1
     comboTimer = 2.5
-    addPopup(`+${gained}`, b.x, b.y, '#2a7a3b')
+    shakeTimer = 0.12
+    borderBurst(bx, by)
+    addPopup(`+${gained}`, bx, by - 10, '#2a7a3b')
+    sfx('catch')
+    return true
   }
 
   function trySpawnMonster() {
-    if (bodies.filter((b) => !b.projectile).length >= 6) return
+    const idle = getMonsters().filter((m) => !m.knocked).length
+    if (idle >= 6) return
     const type = MONSTER_TYPES[Math.floor(Math.random() * MONSTER_TYPES.length)]
     const def = MONSTER_DEFS[type]
     const r = scaledR(def.r)
-    const side = Math.floor(Math.random() * 4)
-    let x = 0
-    let y = 0
-    if (side === 0) {
-      x = rand(r + 20, W - r - 20)
-      y = H + r + 8
-    } else if (side === 1) {
-      x = -r - 8
-      y = rand(r + 20, H - r - 20)
-    } else if (side === 2) {
-      x = W + r + 8
-      y = rand(r + 20, H - r - 20)
-    } else {
-      x = rand(r + 20, W - r - 20)
-      y = -r - 8
-    }
-    bodies.push({
-      type,
-      projectile: false,
-      knocked: false,
-      x,
-      y,
-      vx: 0,
-      vy: 0,
-      r,
-      rot: rand(0, Math.PI * 2),
-      spin: rand(-0.4, 0.4),
-    })
+    const x = rand(r + 24, W - r - 24)
+    const y = rand(r + 36, H * 0.62)
+    bodies.push(makeMonster(type, x, y, r))
+  }
+
+  function decaySquash(b, dt) {
+    if (b.squash > 0) b.squash = Math.max(0, b.squash - dt * 4.5)
   }
 
   function update(dt) {
@@ -271,69 +379,55 @@
       return
     }
 
-    for (let i = bodies.length - 1; i >= 0; i--) {
-      const proj = bodies[i]
-      if (!proj.projectile) continue
-      for (let j = bodies.length - 1; j >= 0; j--) {
-        if (i === j) continue
-        const monster = bodies[j]
-        if (monster.projectile || monster.knocked) continue
-        if (circlesHit(proj, monster)) {
-          knockMonster(proj, monster)
-          bodies.splice(i, 1)
-          break
-        }
+    if (bounceSfxCooldown > 0) bounceSfxCooldown -= dt
+
+    const ball = getBall()
+    const monsters = getMonsters()
+
+    if (ball) {
+      ball.vx *= BALL_FRICTION
+      ball.vy *= BALL_FRICTION
+      ball.x += ball.vx * dt
+      ball.y += ball.vy * dt
+      ball.rot += ball.spin * dt
+
+      for (const monster of monsters) {
+        if (circlesOverlap(ball, monster)) resolveBallMonster(ball, monster)
       }
+
+      const fellOut = resolveBallWalls(ball)
+      if (fellOut) {
+        const idx = bodies.indexOf(ball)
+        if (idx >= 0) bodies.splice(idx, 1)
+      }
+      decaySquash(ball, dt)
     }
 
-    for (let i = bodies.length - 1; i >= 0; i--) {
-      const b = bodies[i]
-      b.x += b.vx * dt
-      b.y += b.vy * dt
-      b.rot += b.spin * dt
-
-      if (b.projectile) {
-        b.life -= dt
-        if (
-          b.life <= 0 ||
-          b.x < -b.r - 10 ||
-          b.x > W + b.r + 10 ||
-          b.y < -b.r - 10 ||
-          b.y > H + b.r + 10
-        ) {
-          bodies.splice(i, 1)
-        }
+    for (let i = monsters.length - 1; i >= 0; i--) {
+      const m = monsters[i]
+      if (!m.knocked) {
+        m.vx = 0
+        m.vy = 0
+        clampMonsterToBounds(m)
+        decaySquash(m, dt)
         continue
       }
 
-      if (!b.knocked) {
-        b.vx *= 0.9
-        b.vy *= 0.9
-        if (b.x - b.r < 0) {
-          b.x = b.r
-          b.vx = Math.abs(b.vx) * 0.2
-        } else if (b.x + b.r > W) {
-          b.x = W - b.r
-          b.vx = -Math.abs(b.vx) * 0.2
-        }
-        if (b.y - b.r < 0) {
-          b.y = b.r
-          b.vy = Math.abs(b.vy) * 0.2
-        } else if (b.y + b.r > H) {
-          b.y = H - b.r
-          b.vy = -Math.abs(b.vy) * 0.2
-        }
-        continue
-      }
+      m.vx *= MONSTER_DRAG
+      m.vy *= MONSTER_DRAG
+      m.x += m.vx * dt
+      m.y += m.vy * dt
+      m.rot += m.spin * dt
+      resolveKnockedMonsterWalls(m)
+      decaySquash(m, dt)
 
-      const margin = 20
-      if (b.x < -margin || b.x > W + margin || b.y < -margin || b.y > H + margin) {
-        onKnocked(b)
-        bodies.splice(i, 1)
+      if (scoreMonsterExit(m)) {
+        const idx = bodies.indexOf(m)
+        if (idx >= 0) bodies.splice(idx, 1)
       }
     }
 
-    if (bodies.filter((b) => !b.projectile && !b.knocked).length < 4 && Math.random() < dt * 0.45) {
+    if (getMonsters().filter((m) => !m.knocked).length < 4 && Math.random() < dt * 0.4) {
       trySpawnMonster()
     }
 
@@ -346,8 +440,8 @@
       const p = particles[i]
       p.x += p.vx * dt
       p.y += p.vy * dt
-      p.vy += 70 * dt
-      p.life -= dt * 1.6
+      p.vy += 80 * dt
+      p.life -= dt * 1.8
       if (p.life <= 0) particles.splice(i, 1)
     }
     if (shakeTimer > 0) shakeTimer -= dt
@@ -385,11 +479,16 @@
     if (aspect > 1) dh = d / aspect
     else dw = d * aspect
 
+    const sq = b.squash || 0
+    const scaleX = 1 + sq * 0.28
+    const scaleY = 1 - sq * 0.22
+
     ctx.save()
     ctx.translate(b.x, b.y)
     ctx.rotate(b.rot)
+    ctx.scale(scaleX, scaleY)
     if (b.projectile) {
-      ctx.shadowColor = 'rgba(61, 46, 34, 0.3)'
+      ctx.shadowColor = 'rgba(61, 46, 34, 0.28)'
       ctx.shadowBlur = 8
     }
     ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
@@ -397,6 +496,7 @@
   }
 
   function drawLauncher() {
+    if (getBall()) return
     const img = images.spiky_puff
     if (!img) return
     const r = scaledR(20)
@@ -406,11 +506,18 @@
     ctx.translate(launcher.x, launcher.y + bob)
     ctx.drawImage(img, -r, -r, r * 2, r * 2)
     ctx.restore()
+    ctx.strokeStyle = 'rgba(61, 46, 34, 0.2)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([4, 6])
+    ctx.beginPath()
+    ctx.arc(launcher.x, launcher.y, r + 6, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.setLineDash([])
   }
 
   function draw() {
-    const shakeX = shakeTimer > 0 ? Math.sin(shakeTimer * 80) * 4 : 0
-    const shakeY = shakeTimer > 0 ? Math.cos(shakeTimer * 60) * 3 : 0
+    const shakeX = shakeTimer > 0 ? Math.sin(shakeTimer * 80) * 3 : 0
+    const shakeY = shakeTimer > 0 ? Math.cos(shakeTimer * 60) * 2 : 0
 
     ctx.save()
     ctx.translate(shakeX, shakeY)
@@ -428,7 +535,7 @@
       ctx.globalAlpha = clamp(p.life, 0, 1)
       ctx.fillStyle = p.color
       ctx.beginPath()
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+      ctx.arc(p.x, p.y, p.r * (0.5 + p.life * 0.5), 0, Math.PI * 2)
       ctx.fill()
     }
     ctx.globalAlpha = 1
@@ -467,6 +574,7 @@
     popups = []
     particles = []
     shakeTimer = 0
+    bounceSfxCooldown = 0
     spawnMonsters()
     paused = false
     running = true
@@ -501,8 +609,8 @@
     fitShellToViewport()
     resizeCanvas()
     if (running) {
-      for (const b of bodies) {
-        if (!b.projectile && !b.knocked) {
+      for (const b of getMonsters()) {
+        if (!b.knocked) {
           b.x = clamp(b.x, b.r, W - b.r)
           b.y = clamp(b.y, b.r, H - b.r)
         }

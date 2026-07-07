@@ -5,11 +5,16 @@
 | 文件 | 用途 | 来源 |
 |------|------|------|
 | `bgm.mp3` | 背景音乐 | [SoundHelix](https://www.soundhelix.com) — Song 8 |
-| `catch.mp3` | 接到食物 | [Mixkit](https://mixkit.co/free-sound-effects/) |
-| `catch_special.mp3` | 接到眼睛虫 | [Mixkit](https://mixkit.co/free-sound-effects/) |
+| `catch.mp3` | 接到食物 / 抓住怪物 | [Mixkit](https://mixkit.co/free-sound-effects/) |
+| `catch_special.mp3` | 接到眼睛虫 / 彩蛋 | [Mixkit](https://mixkit.co/free-sound-effects/) |
 | `miss_cry.mp3` | 漏接哭泣 | [Mixkit](https://mixkit.co/free-sound-effects/) |
 | `gameover.mp3` | 游戏结束 | [Mixkit](https://mixkit.co/free-sound-effects/) |
-| `pop.mp3` | 按钮点击 | [Mixkit](https://mixkit.co/free-sound-effects/) |
+| `pop.mp3` | 按钮点击 / 发射 | [Mixkit](https://mixkit.co/free-sound-effects/) |
+| `bark.mp3` | 点到小狗（森林躲猫猫） | [Mixkit](https://mixkit.co/free-sound-effects/dog/) — Happy puppy barks |
+| `hop.mp3` | 点到兔子蹦跳 | [Mixkit](https://mixkit.co/free-sound-effects/jump/) — Player jumping in a video game |
+| `ouch.mp3` | 点到刺刺球扣分 | [Mixkit](https://mixkit.co/free-sound-effects/hurt/) |
+| `bounce.mp3` | 弹球碰撞 / 弹飞得分 | [Mixkit](https://mixkit.co/free-sound-effects/ball/) — Ball bouncing in the ground |
+| `tap.mp3` | 点空 / 点到眼睛 | [Mixkit](https://mixkit.co/free-sound-effects/click/) |
 
 Mixkit 许可：可免费用于个人与商业项目，详见 [Mixkit License](https://mixkit.co/license/)。
 

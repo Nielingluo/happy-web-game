@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>刺刺球弹弹乐 · 手绘小怪物乐园</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/game.css" />
+</head>
+
+<body class="game-page">
+  <div class="game-shell">
+    <header class="game-top">
+      <div class="top-bar">
+        <a class="back-link" href="../index.html">← 返回菜单</a>
+        <div class="top-actions">
+          <button id="help-btn" class="icon-btn" type="button" title="游戏说明">?</button>
+          <button id="mute-btn" class="icon-btn" type="button" title="静音">🔊</button>
+        </div>
+      </div>
+      <h1>刺刺球弹弹乐</h1>
+      <p class="hint">点击屏幕发射刺刺球，把小怪物弹飞出界！</p>
+      <div class="hud">
+        <span>得分 <strong id="score">0</strong></span>
+        <span>时间 <strong id="timer">60</strong></span>
+        <span>弹飞 <strong id="knocked">0</strong></span>
+      </div>
+    </header>
+
+    <div class="canvas-wrap">
+      <canvas id="game" aria-label="刺刺球弹弹乐游戏画布"></canvas>
+    </div>
+
+    <div id="overlay" class="overlay">
+      <div class="panel panel-wide">
+        <h2 id="overlay-title">刺刺球弹弹乐</h2>
+        <div id="overlay-rules" class="rules">
+          <p><strong>怎么玩</strong></p>
+          <ul>
+            <li>点击或触摸画布，<strong>刺刺球</strong>会朝那个方向飞出去</li>
+            <li>撞到小怪物会把它们<strong>弹飞</strong></li>
+            <li>把小怪物<strong>弹出屏幕边界</strong>就得分</li>
+            <li><strong>限时 60 秒</strong>，看谁弹得最多！</li>
+          </ul>
+        </div>
+        <p id="overlay-msg" class="overlay-sub">准备好了吗？</p>
+        <button id="start-btn" type="button">开始游戏</button>
+      </div>
+    </div>
+
+    <div id="help-modal" class="overlay hidden">
+      <div class="panel panel-wide">
+        <h2>游戏说明</h2>
+        <div class="rules">
+          <p><strong>操作</strong></p>
+          <ul>
+            <li>点击哪里，刺刺球就往哪里飞</li>
+            <li>最多同时有 2 颗刺刺球在场上</li>
+          </ul>
+          <p><strong>得分</strong></p>
+          <ul>
+            <li>每弹飞一只小怪物 +15 分</li>
+            <li>连续弹飞有连击加分</li>
+          </ul>
+          <p><strong>小提示</strong></p>
+          <ul>
+            <li>瞄着怪物密集的地方打效果更好</li>
+            <li>撞墙会反弹，善用角度！</li>
+          </ul>
+        </div>
+        <button id="help-close-btn" type="button">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/audio.js"></script>
+  <script src="../js/bounce.js"></script>
+</body>
+
+</html>

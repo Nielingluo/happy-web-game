@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>森林躲猫猫 · 手绘小怪物乐园</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/game.css" />
+</head>
+
+<body class="game-page">
+  <div class="game-shell">
+    <header class="game-top">
+      <div class="top-bar">
+        <a class="back-link" href="../index.html">← 返回菜单</a>
+        <div class="top-actions">
+          <button id="help-btn" class="icon-btn" type="button" title="游戏说明">?</button>
+          <button id="mute-btn" class="icon-btn" type="button" title="静音">🔊</button>
+        </div>
+      </div>
+      <h1>森林躲猫猫</h1>
+      <p class="hint">小怪物会从草丛和树洞里探出头，快点它们！</p>
+      <div class="hud">
+        <span>得分 <strong id="score">0</strong></span>
+        <span>时间 <strong id="timer">60</strong></span>
+        <span>抓住 <strong id="hits">0</strong></span>
+      </div>
+    </header>
+
+    <div class="canvas-wrap">
+      <canvas id="game" aria-label="森林躲猫猫游戏画布"></canvas>
+    </div>
+
+    <div id="overlay" class="overlay">
+      <div class="panel panel-wide">
+        <h2 id="overlay-title">森林躲猫猫</h2>
+        <div id="overlay-rules" class="rules">
+          <p><strong>怎么玩</strong></p>
+          <ul>
+            <li>点击或触摸<strong>探头的小怪物</strong>把它们抓住</li>
+            <li><strong>限时 60 秒</strong>，看你能得多少分</li>
+            <li>小狗会汪汪叫，兔子会蹦一下</li>
+            <li>蜗牛慢吞吞，多留一会儿 — 分更高</li>
+            <li>小心 <strong>刺刺球</strong>，点到会扣分还会「哎哟」！</li>
+            <li>偶尔会有 <strong>大嘴巴彩蛋</strong>，快抓！</li>
+          </ul>
+        </div>
+        <p id="overlay-msg" class="overlay-sub">准备好了吗？</p>
+        <button id="start-btn" type="button">开始游戏</button>
+      </div>
+    </div>
+
+    <div id="help-modal" class="overlay hidden">
+      <div class="panel panel-wide">
+        <h2>游戏说明</h2>
+        <div class="rules">
+          <p><strong>操作</strong></p>
+          <ul>
+            <li>电脑：鼠标点击探头的小怪物</li>
+            <li>手机：手指点触即可</li>
+          </ul>
+          <p><strong>得分</strong></p>
+          <ul>
+            <li>大嘴巴彩蛋 +30 · 眼睛虫 +20</li>
+            <li>蜗牛 +15 · 兔子 +12 · 其他 +8～10</li>
+            <li>刺刺球 -5（别乱点！）</li>
+          </ul>
+          <p><strong>小提示</strong></p>
+          <ul>
+            <li>越往后探头越快，可能同时出现好几个</li>
+            <li>游戏中点 <strong>?</strong> 会暂停</li>
+          </ul>
+        </div>
+        <button id="help-close-btn" type="button">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/audio.js"></script>
+  <script src="../js/whack.js"></script>
+</body>
+
+</html>

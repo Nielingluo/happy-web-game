@@ -11,6 +11,11 @@
     miss: { file: "miss_cry.mp3", volume: 0.5 },
     gameover: { file: "gameover.mp3", volume: 0.45 },
     pop: { file: "pop.mp3", volume: 0.35 },
+    bark: { file: "bark.mp3", volume: 0.6 },
+    hop: { file: "hop.mp3", volume: 0.55 },
+    ouch: { file: "ouch.mp3", volume: 0.55 },
+    bounce: { file: "bounce.mp3", volume: 0.5 },
+    tap: { file: "tap.mp3", volume: 0.3 },
   };
 
   const pool = {};

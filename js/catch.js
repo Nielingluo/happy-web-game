@@ -56,7 +56,10 @@
   let paused = false
   let sizeScale = 1
 
-  const player = { x: 200, y: 0, w: 140, h: 78, wobble: 0 }
+  const BOTTOM_PAD = 12
+  const MOUTH_OPEN_MAX = 1.18
+
+  const player = { x: 200, y: 0, w: 140, h: 78, wobble: 0, drawH: 78 }
 
   const CONFETTI_COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff8fc7', '#9b59b6', '#ff9f43']
 
@@ -91,6 +94,23 @@
     return Math.round(base * sizeScale)
   }
 
+  function spriteHeight(img, width) {
+    if (!img) return width * 0.58
+    return img.height * (width / img.width)
+  }
+
+  function layoutPlayer() {
+    const phMouth = spriteHeight(images.big_mouth, player.w)
+    const phToothy = spriteHeight(images.toothy_monster, player.w)
+    const ph = Math.max(phMouth, phToothy)
+    player.drawH = ph
+    player.h = ph
+    const bobPad = 3
+    const openPad = (ph / 2) * (1 + MOUTH_OPEN_MAX)
+    player.y = H - BOTTOM_PAD - bobPad - openPad
+    GROUND = H - BOTTOM_PAD
+  }
+
   function resizeCanvas() {
     const wrap = canvas.parentElement
     const rect = wrap.getBoundingClientRect()
@@ -104,10 +124,8 @@
     canvas.style.height = `${H}px`
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     setupCanvasQuality()
-    GROUND = H - 8
     player.w = clamp(W * 0.28, 105, 155)
-    player.h = player.w * 0.58
-    player.y = GROUND - player.h
+    layoutPlayer()
     player.x = clamp(pointerX, player.w / 2, W - player.w / 2)
     pointerX = player.x
   }
@@ -194,11 +212,12 @@
 
   function catchBox() {
     const padX = player.w * 0.14
+    const ph = player.drawH || player.h
     return {
       x: player.x - player.w / 2 + padX,
       y: player.y,
       w: player.w - padX * 2,
-      h: player.h * 0.55,
+      h: ph * 0.55,
     }
   }
 
@@ -497,13 +516,22 @@
       startGame()
     }
   })
-  window.addEventListener('resize', () => {
+  function onViewportChange() {
     resizeCanvas()
     draw()
-  })
+  }
+
+  window.addEventListener('resize', onViewportChange)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onViewportChange)
+    window.visualViewport.addEventListener('scroll', onViewportChange)
+  }
 
   loadAssets()
-    .then(showStart)
+    .then(() => {
+      resizeCanvas()
+      showStart()
+    })
     .catch((err) => {
       console.error(err)
       overlayTitle.textContent = '加载失败'
